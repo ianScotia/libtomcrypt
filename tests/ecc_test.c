@@ -105,6 +105,41 @@ int ecc_test_shamir(void)
 }
 #endif
 
+static int _ecc_issue108(void)
+{
+   void      *modulus, *order;
+   ecc_point *Q, *Result;
+   int       i, err;
+
+   /* search ECC-224 */
+   for (i = 0; ltc_ecc_sets[i].size != 24 && ltc_ecc_sets[i].size; ++i) ;
+   if (ltc_ecc_sets[i].size != 24) return CRYPT_INVALID_KEYSIZE;
+
+   /* init */
+   if ((err = mp_init_multi(&modulus, &order, NULL)) != CRYPT_OK) { return err; }
+   Q      = ltc_ecc_new_point();
+   Result = ltc_ecc_new_point();
+
+   /* read modulus */
+   if ((err = mp_read_radix(modulus, (char *)ltc_ecc_sets[i].prime, 16)) != CRYPT_OK) { goto done; }
+   /* read order */
+   if ((err = mp_read_radix(order, (char *)ltc_ecc_sets[i].order, 16)) != CRYPT_OK)   { goto done; }
+   /* read Q */
+   if ((err = mp_read_radix(Q->x, (char *)"EA3745501BBC6A70BBFDD8AEEDB18CF5073C6DC9AA7CBB5915170D60", 16)) != CRYPT_OK) { goto done; }
+   if ((err = mp_read_radix(Q->y, (char *)"6C9CB8E68AABFEC989CAC5E2326E0448B7E69C3E56039BA21A44FDAC", 16)) != CRYPT_OK) { goto done; }
+   mp_set(Q->z, 1);
+   /* calculate nQ */
+
+   err = ltc_mp.ecc_ptmul(order, Q, Result, modulus, 1);
+
+done:
+   ltc_ecc_del_point(Result);
+   ltc_ecc_del_point(Q);
+   mp_clear_multi(modulus, order, NULL);
+   return err;
+}
+
+
 int ecc_tests (void)
 {
   unsigned char buf[4][4096], ch;
@@ -113,6 +148,7 @@ int ecc_tests (void)
   ecc_key usera, userb, pubKey, privKey;
 
   DO(ecc_test ());
+  DO(_ecc_issue108 ());
 
   for (s = 0; s < (sizeof(sizes)/sizeof(sizes[0])); s++) {
      /* make up two keys */
